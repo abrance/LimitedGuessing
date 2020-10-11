@@ -91,19 +91,23 @@ class GameInit(Thread):
     def add_player(self, player):
         if player.id not in self.player_info:
             self.player_info.__setitem__(player.id, player)
-
+ 
     def run(self) -> None:
         while True:
             time.sleep(5)
             self.panel()
 
 
+g = GameInit()
+    # p1 = Player()
+    # p1.set_id(1)
+    # p2 = Player()
+    # p2.set_id(2)
+    # g.add_player(p1)
+    # g.add_player(p2)
+    # print([i.__dict__ for i in g.player_info.values()])
+    
+
+            
 if __name__ == '__main__':
-    g = GameInit()
-    p1 = Player()
-    p1.set_id(1)
-    p2 = Player()
-    p2.set_id(2)
-    g.add_player(p1)
-    g.add_player(p2)
-    print([i.__dict__ for i in g.player_info.values()])
+    pass

@@ -1,5 +1,7 @@
 
 from flask import Flask
+from app.views import get_game_info
+
 
 app = Flask(__name__)
 
@@ -13,4 +15,5 @@ def run():
 
 
 if __name__ == "__main__":
+    get_game_info()
     run()
