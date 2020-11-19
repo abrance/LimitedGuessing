@@ -1,5 +1,7 @@
 import queue
 
+from app.player import Player
+
 card_pool = queue.Queue(3*6)
 
 
@@ -71,8 +73,10 @@ class FingerGuessCard(Card):
     # 2020/10/5 rock-paper-scissors
     points = ['R', 'P', 'S']
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(FingerGuessCard, self).__init__()
+        if 'point' in kwargs:
+            self.set_point(kwargs.get('point'))
 
     # 2020/10/5 规则也放这里，可能比较好
     @classmethod
@@ -89,3 +93,14 @@ class FingerGuessCard(Card):
                 return 'R' if 'S' in (point1, point2) else 'P'
             else:
                 return 'S'
+
+
+def bid_limited_guessing(player: Player):
+    """
+    发牌逻辑 写简单一点
+    :param player:
+    :return:
+    """
+    assert isinstance(player, Player)
+    assert len(player.stack) == 0
+    player.stack = [FingerGuessCard(point=p) for p in FingerGuessCard.points for _ in range(6)]

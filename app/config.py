@@ -1,3 +1,5 @@
+from queue import Queue
+
 
 class Constant(object):
     # 解包的格式
@@ -28,6 +30,15 @@ command_str = {
 
 
 class Config(object):
+    users = [('xiaoY', '110')]
+
     src_id = None
     local_dispatcher_listen_port = None
     local_dispatcher_listen_ipv4 = None
+
+
+# 为了复用这个处理线程，要求每个队列元素内容应该是 (id, data) 这种形式
+add_player_queue = Queue(maxsize=-1)
+set_player_queue = Queue(maxsize=-1)
+init_global_game_queue = Queue(maxsize=-1)
+card_queue = Queue(maxsize=-1)
