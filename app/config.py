@@ -38,6 +38,7 @@ class Config(object):
 
 
 # 为了复用这个处理线程，要求每个队列元素内容应该是 (id, data) 这种形式
+gg_add_player_queue = Queue(maxsize=-1)
 add_player_queue = Queue(maxsize=-1)
 set_player_queue = Queue(maxsize=-1)
 init_global_game_queue = Queue(maxsize=-1)

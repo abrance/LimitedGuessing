@@ -3,6 +3,7 @@ from threading import Thread
 import time
 
 from app.bid import Card, FingerGuessCard
+from app.log import logger
 from app.utils import get_game_id
 
 
@@ -10,14 +11,17 @@ class LimitedGuessing(object):
     """
     桌号确定，人数一齐，开始游戏，所以玩家列表必传
     """
+
     def __init__(self, table_id, players: list):
         assert table_id in g.table_dc.keys()
         assert len(players) == 2
         self.game_id = get_game_id()
         self.table_id = table_id
         self.players = players
-        self.players_cards_on_table = []
+        self.players_cards_on_table = {}
+        # winner 三个值 None 未开始 True 平局 player 某一位
         self.winner = None
+        self.gamble_lock = False
 
     def bid(self):
         """
@@ -26,28 +30,49 @@ class LimitedGuessing(object):
         """
         pass
 
+    def bet(self, player, coin_num):
+        # 下注
+        assert isinstance(player, Player)
+        assert isinstance(coin_num, int) and player.coins >= coin_num > 0
+        assert player.id in self.players_cards_on_table.keys()
+        assert isinstance(self.players_cards_on_table.get(player.id), dict)
+
+        # 下注原子操作
+        player.coins -= coin_num
+        self.players_cards_on_table.get(player.id).__setitem__('bet', coin_num)
+
+        return True
+
     def put(self, player, card):
+        # 放牌
         assert isinstance(player, Player) and isinstance(card, Card)
         assert player in self.players
         put_dc = {
-            'player': player,
-            'card': card,
-            'time': datetime.now()
+            player.id: {
+                'player': player,
+                'card': card,
+                'time': datetime.now(),
+                'ready': False
+            }
         }
 
         # 每一张牌都应该是由一个位置转到另一个位置的，这里是玩家手中出到牌桌
         player.play(card)
-        self.players_cards_on_table.append(put_dc)
+        self.players_cards_on_table.update(put_dc)
+        return True
 
     def check(self):
+        # 决出 winner
+        assert self.gamble_lock is True
         assert len(self.players_cards_on_table) > 0
-        f = self.players_cards_on_table[0]
-        s = self.players_cards_on_table[1]
+        f = list(self.players_cards_on_table.values())[0]
+        s = list(self.players_cards_on_table.values())[1]
         f_card = f.get('card')
         s_card = s.get('card')
         ret = FingerGuessCard.compare(f_card, s_card)
         if isinstance(ret, int):
             # 平局
+            self.winner = True
             return True
         else:
             if f_card == ret:
@@ -56,6 +81,38 @@ class LimitedGuessing(object):
             else:
                 self.winner = s.get('player')
                 return s.get('player')
+
+    def lock_gamble(self):
+        for i in self.players_cards_on_table.values():
+            assert i.get('ready') is True
+        self.gamble_lock = True
+        return True
+
+    def settle(self):
+        # 结算
+        assert self.gamble_lock is True
+
+        if self.winner is True:
+            # 平局
+            pass
+        else:
+            assert isinstance(self.winner, Player)
+            assert self.winner.id in self.players_cards_on_table.keys()
+            bet = self.players_cards_on_table.get(self.winner.id).get('bet')
+            assert isinstance(bet, int) and bet > 0
+            ls = list(self.players_cards_on_table.keys())
+            ls.pop(self.winner.id)
+            assert len(ls) is 1
+            another = ls[0]
+            another_dc = self.players_cards_on_table[another]
+            another_bet = another_dc.get('bet')
+            assert isinstance(another_bet, int) and another_bet > 0
+
+            # 奖金 发给 winner
+            reward = bet + another_bet
+            self.winner.get_reward(reward)
+
+            return True
 
 
 class PlayTable(object):
@@ -106,6 +163,7 @@ class Player(object):
         self.name = None
         self.id = None
         self.stack = []
+        self.coins = 0
         self.create_time = datetime.now()
 
     def set_name(self, name: str):
@@ -120,6 +178,12 @@ class Player(object):
     def play(self, card):
         assert card in self.stack
         self.stack.remove(card)
+
+    def get_reward(self, coin_num):
+        logger.info('<<<< get_reward coin_num')
+        assert isinstance(self.coins, int) and isinstance(coin_num, int) and coin_num > 0
+        self.coins += coin_num
+        return True
 
     def __str__(self):
         return str(self.id)
@@ -157,7 +221,7 @@ class GameInit(Thread):
     def add_player(self, player):
         if player.id not in self.player_info:
             self.player_info.__setitem__(player.id, player)
- 
+
     def run(self) -> None:
         while True:
             time.sleep(5)
@@ -177,7 +241,7 @@ def main():
     g.add_player(p1)
     g.add_player(p2)
     print([i.__dict__ for i in g.player_info.values()])
-    
+
 
 if __name__ == '__main__':
     main()

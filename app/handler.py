@@ -78,7 +78,6 @@ class SetPlayerHandler(Handler):
         gg.add_player(new_player)
 
 
-
 class AddPlayerHandler(Handler):
     """
     玩家加入牌桌 Handler， 目标队列：
