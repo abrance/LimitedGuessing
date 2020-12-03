@@ -1,5 +1,7 @@
 from queue import Queue
 
+from flask import Flask
+
 
 class Constant(object):
     # 解包的格式
@@ -27,6 +29,10 @@ class Constant(object):
 command_str = {
     '': ''
 }
+
+
+app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
 
 
 class Config(object):

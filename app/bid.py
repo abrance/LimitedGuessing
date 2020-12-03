@@ -1,6 +1,5 @@
 import queue
 
-from app.player import Player
 
 card_pool = queue.Queue(3*6)
 
@@ -95,12 +94,12 @@ class FingerGuessCard(Card):
                 return 'S'
 
 
-def bid_limited_guessing(player: Player):
+def bid_limited_guessing(player):
     """
     发牌逻辑 写简单一点
     :param player:
     :return:
     """
-    assert isinstance(player, Player)
+    # assert isinstance(player, Player)
     assert len(player.stack) == 0
     player.stack = [FingerGuessCard(point=p) for p in FingerGuessCard.points for _ in range(6)]

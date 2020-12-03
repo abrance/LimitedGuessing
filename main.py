@@ -1,19 +1,10 @@
 
-from flask import Flask
-from app.views import get_game_info
-
-
-app = Flask(__name__)
-
-@app.route("/")
-def index():
-    return "<h1> index </h1>"
+from app.views import app
 
 
 def run():
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=9090)
 
 
 if __name__ == "__main__":
-    get_game_info()
     run()

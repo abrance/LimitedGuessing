@@ -7,6 +7,7 @@ from flask import request
 from app.config import set_player_queue, add_player_queue, gg_add_player_queue
 from app.handler import gg
 from app.player import GameInit, FingerGuessPlayTable, Player
+from app.config import app
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -29,6 +30,7 @@ def get_tables_info():
 """
 
 
+@app.route('/api/table_info/')
 def get_table_info():
     """
     获取 某一牌桌信息
@@ -78,6 +80,7 @@ class GetTablePlayerInfo(object):
 get_tp_info = GetTablePlayerInfo()
 
 
+@app.route('/api/table_player_bet')
 def get_table_player_bet():
     """
     获取牌桌上 玩家的下注
@@ -91,6 +94,7 @@ def get_table_player_bet():
     return bet
 
 
+@app.route('/api/table_player_ready')
 def get_table_player_ready():
     """
     获取牌桌上 玩家的准备状态
@@ -112,6 +116,7 @@ def get_table_player_ready():
 
 # ----  更新 END  --------------------------------
 
+@app.route('/api/set/player', methods=['POST'])
 def set_player():
     info = request.data
     dc = json.loads(info)
@@ -120,6 +125,7 @@ def set_player():
     return True
 
 
+@app.route('/api/add/player', methods=['POST'])
 def gg_add_player():
     info = request.data
     dc = json.loads(info)
@@ -129,6 +135,7 @@ def gg_add_player():
     return True
 
 
+@app.route('/api/add/player', methods=['POST'])
 def table_add_player():
     info = request.data
     dc = json.loads(info)
