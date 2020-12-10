@@ -2,27 +2,84 @@ import json
 import os
 import sys
 
-from flask import request
+from flask import request, jsonify
 
-from app.config import set_player_queue, add_player_queue, gg_add_player_queue
-from app.handler import gg
-from app.player import GameInit, FingerGuessPlayTable, Player
+from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue
+from app.handler import HandlersInit
+from app.log import logger
+from app.player import GameInit, FingerGuessPlayTable, Player, manager
 from app.config import app
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+# --- 启动
+HandlersInit()
+
+
+def error(msg='', code=400):
+    """
+    unexpected request receive
+    :param msg: error msg
+    :param code: 400
+    :return: type json
+    """
+    ret = {
+        'msg': msg,
+        'code': code
+    }
+    return jsonify(ret)
+
+
+def run(data=None, msg='', code=200):
+    """
+    expected(I doubt that) request
+    :param data: payload (maybe null)
+    :param msg: tell you what, for extending
+    :param code: 200
+    :return:
+    """
+    ret = {
+        'data': data,
+        'msg': msg,
+        'code': code
+    }
+    return jsonify(ret)
+
+
+# ----  启动 END  --------------------------------
+@app.route('/api/init', methods=['POST'])
+def global_game_init():
+    """
+    init global game
+    :return:
+    """
+    try:
+        info = request.data
+        dc = json.loads(info)
+        user, pwd = dc.get('user'), dc.get('password')
+        init_global_game_queue.put((user, pwd))
+        return run()
+    except AssertionError as e:
+        msg = 'TRY ME {}'.format(e)
+        logger.error(msg)
+        return error(msg)
+
+
+# ----  启动 END  --------------------------------
+@app.route('/api/table_list')
 def get_tables_info():
     """
     获取 所有的牌桌信息列表
     :return: status: 牌桌开没开牌
     """
-    assert isinstance(gg, GameInit)
-    return [
+    assert isinstance(manager.gg, GameInit)
+    data = [
         {
             'table_id': table_id, 'players': [p.id for p in table.players], 'status': True if table.game else False
-        } for table_id, table in gg.table_dc
+        } for table_id, table in manager.gg.table_dc.items()
     ]
+    return run(data=data)
 
 
 """
@@ -30,28 +87,48 @@ def get_tables_info():
 """
 
 
-@app.route('/api/table_info/')
+@app.route('/api/table_info')
 def get_table_info():
     """
     获取 某一牌桌信息
     :return:  bet == -1 表示没下注
     """
-    table_id = request.data
-    assert isinstance(gg, GameInit)
-    table = gg.table_dc.get(table_id)
-    assert isinstance(table, FingerGuessPlayTable)
+    info = request.data
+    table_id = json.loads(info).get('table_id')
+    logger.info('gg: {}'.format(manager.gg))
+    assert isinstance(manager.gg, GameInit)
 
-    return {
+    table = manager.gg.table_dc.get(table_id)
+    assert isinstance(table, FingerGuessPlayTable)
+    data = {
         'table_id': table_id,
         'status': True if table.game else False,
         'players': {
             p.id: {
-                'nickname': p.nickname,
+                'nickname': p.name,
                 'coins': p.coins
             }
             for p in table.players
         }
     }
+    return run(data=data)
+
+
+@app.route('/api/players_list')
+def list_game_players():
+    """
+    获取 gg 所有player 信息
+    :return:
+    """
+    assert isinstance(manager.gg, GameInit)
+    data = [
+        {
+            "pid": player_id,
+            "name": p.name
+        }
+        for player_id, p in manager.gg.player_info.items()
+    ]
+    return run(data=data)
 
 
 class GetTablePlayerInfo(object):
@@ -60,7 +137,7 @@ class GetTablePlayerInfo(object):
 
     @staticmethod
     def get_table_player_info(table_id, player_id):
-        table = gg.table_dc.get(table_id)
+        table = manager.gg.table_dc.get(table_id)
         assert isinstance(table.game, GameInit)
         player_dc = table.players_cards_on_table.get(player_id)
         assert player_dc.get('player', Player)
@@ -122,27 +199,41 @@ def set_player():
     dc = json.loads(info)
     nickname = dc.get('nickname')
     set_player_queue.put((nickname, ))
-    return True
+    return run()
 
 
-@app.route('/api/add/player', methods=['POST'])
-def gg_add_player():
-    info = request.data
-    dc = json.loads(info)
-    player_id = dc.get('player_id')
-    param = (player_id, )
-    gg_add_player_queue.put(param)
-    return True
+# @app.route('/api/add/player', methods=['POST'])
+# def gg_add_player():
+#     info = request.data
+#     dc = json.loads(info)
+#     player_id = dc.get('player_id')
+#     param = (player_id, )
+#     gg_add_player_queue.put(param)
+#     return True
 
 
 @app.route('/api/add/player', methods=['POST'])
 def table_add_player():
+    """
+    牌桌增加玩家
+    :return:
+    """
     info = request.data
     dc = json.loads(info)
     table_id, player_id = dc.get('table_id'), dc.get('player_id')
     param = (table_id, (player_id, ))
     add_player_queue.put(param)
-    return True
+    return run()
+
+
+@app.route('/api/init_game', methods=['POST'])
+def init_game():
+    info = request.data
+    dc = json.loads(info)
+    table_id = dc.get('table_id')
+    param = (table_id, )
+    init_game_queue.put(param)
+    return run()
 
 
 if __name__ == '__main__':

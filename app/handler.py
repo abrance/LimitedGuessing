@@ -2,13 +2,13 @@ import time
 from queue import Queue
 from threading import Thread
 
-from app.config import add_player_queue, set_player_queue, init_global_game_queue, Config
+from app.config import add_player_queue, set_player_queue, init_global_game_queue, Config, init_game_queue
 from app.log import logger
-from app.player import Player, GameInit
+from app.player import Player, GameInit, manager
 from app.utils import get_player_id
 
 
-gg = None
+gg = manager.gg
 
 
 class Handler(Thread):
@@ -32,7 +32,7 @@ class Handler(Thread):
             if self.queue.qsize():
                 self.handle()
             else:
-                time.sleep(0.1)
+                time.sleep(1)
 
 
 class InitGlobalGameHandler(Handler):
@@ -43,15 +43,16 @@ class InitGlobalGameHandler(Handler):
         super(InitGlobalGameHandler, self).__init__(init_global_game_queue)
 
     def handle(self):
+        logger.info('<<<')
         param = self.queue.get()
         host, password = param
 
-        global gg
         if isinstance(gg, GameInit):
             return True
         else:
             if (host, password) in Config.users:
-                gg = GameInit()
+                manager.turn_on()
+                logger.info('<<<<<<')
                 return True
             else:
                 logger.error('not administrator')
@@ -75,7 +76,7 @@ class SetPlayerHandler(Handler):
         new_player.set_name(nickname)
         new_player.set_id(new_player_id)
 
-        gg.add_player(new_player)
+        manager.gg.add_player(new_player)
 
 
 class AddPlayerHandler(Handler):
@@ -92,14 +93,51 @@ class AddPlayerHandler(Handler):
         table_id, data = param
         player_id, = data
         try:
-            assert isinstance(gg, GameInit)
-            assert table_id in gg.table_dc.keys()
-            assert player_id in gg.player_info.keys()
-            table = gg.table_dc[table_id]
-            player = gg.player_info[player_id]
+            logger.info(manager.gg)
+            logger.info(manager.gg.table_dc)
+            assert isinstance(manager.gg, GameInit)
+            assert table_id in manager.gg.table_dc.keys()
+            assert player_id in manager.gg.player_info.keys()
+            table = manager.gg.table_dc[table_id]
+            player = manager.gg.player_info[player_id]
             assert player not in table.players
             table.add_player(player)
             return True
         except AssertionError as e:
             logger.error('AddPlayerHandler fail: {}'.format(e))
             return False
+
+
+class InitGameHandler(Handler):
+    """
+    人数齐了，游戏就可以开了
+    """
+    def __init__(self):
+        super(InitGameHandler, self).__init__(init_game_queue)
+
+    def handle(self):
+        param = self.queue.get()
+        table_id, = param
+        try:
+            assert isinstance(manager.gg, GameInit)
+            assert table_id in manager.gg.table_dc.keys()
+            table = manager.gg.table_dc[table_id]
+            table.init_gambling()
+            return True
+        except AssertionError as e:
+            logger.error('InitGameHandler fail: {}'.format(e))
+            return False
+
+
+class HandlersInit(object):
+    """
+    init all handlers
+    """
+    init_ggh = InitGlobalGameHandler()
+    sph = SetPlayerHandler()
+    aph = AddPlayerHandler()
+    igh = InitGameHandler()
+    init_ggh.start()
+    sph.start()
+    aph.start()
+    igh.start()

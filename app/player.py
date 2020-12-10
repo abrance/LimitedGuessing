@@ -13,7 +13,7 @@ class LimitedGuessing(object):
     """
 
     def __init__(self, table_id, players: list):
-        assert table_id in g.table_dc.keys()
+        # assert table_id in g.table_dc.keys()
         assert len(players) == 2
         self.game_id = get_game_id()
         self.table_id = table_id
@@ -228,20 +228,44 @@ class GameInit(Thread):
             self.panel()
 
 
-g = GameInit()
+class GameManager(object):
+    """
+    打开全局游戏开关
+    """
+    def __init__(self):
+        self.status = False     # 默认关闭
+        self.gg = None
+
+    def run(self):
+        assert self.status is True
+        self.gg = GameInit()
+
+    def turn_on(self):
+        if self.status is False:
+            self.status = True
+        self.run()
+        return True
+
+    def turn_off(self):
+        if self.status is True:
+            self.status = False
+        return True
 
 
-def main():
-    p1 = Player()
-    p1.set_id(1)
-    p1.set_name('xiaoY')
-    p2 = Player()
-    p2.set_id(2)
-    p2.set_name('fei')
-    g.add_player(p1)
-    g.add_player(p2)
-    print([i.__dict__ for i in g.player_info.values()])
+manager = GameManager()
 
 
-if __name__ == '__main__':
-    main()
+# def main():
+#     p1 = Player()
+#     p1.set_id(1)
+#     p1.set_name('xiaoY')
+#     p2 = Player()
+#     p2.set_id(2)
+#     p2.set_name('fei')
+#     g.add_player(p1)
+#     g.add_player(p2)
+#     print([i.__dict__ for i in g.player_info.values()])
+
+
+# if __name__ == '__main__':
+#     main()
