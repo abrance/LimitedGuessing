@@ -102,4 +102,4 @@ def bid_limited_guessing(player):
     """
     # assert isinstance(player, Player)
     assert len(player.stack) == 0
-    player.stack = [FingerGuessCard(point=p) for p in FingerGuessCard.points for _ in range(6)]
+    player.stack = [FingerGuessCard(point=p) for p in FingerGuessCard.points for _ in range(3)]

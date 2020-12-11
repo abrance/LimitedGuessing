@@ -130,3 +130,37 @@ def test_init_game():
     # 验证
     res = test_get_table_info()
     assert res.get('data').get('status') is True
+
+
+def test_get_table_player_stack(skip=False):
+    # lay
+    if skip:
+        pass
+    else:
+        test_init_game()
+
+    url = get_url('/api/table_player_stack')
+    data = {
+        'player_id': 0
+    }
+    ret = requests.get(url, data=json.dumps(data))
+    check_ret(ret)
+    res = ret.json()
+    return res
+
+
+def test_limit_guess_bid():
+    # lay
+
+    test_init_game()
+    url = get_url('/api/bid/limit_guess')
+    data = {
+        'table_id': 0
+    }
+    ret = requests.post(url, data=json.dumps(data))
+    check_ret(ret)
+    time.sleep(1)
+
+    res = test_get_table_player_stack(True)
+    data = res.get('data')
+    assert data

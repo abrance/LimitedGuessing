@@ -4,7 +4,8 @@ import sys
 
 from flask import request, jsonify
 
-from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue
+from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue, \
+    limit_guess_bid_queue
 from app.handler import HandlersInit
 from app.log import logger
 from app.player import GameInit, FingerGuessPlayTable, Player, manager
@@ -143,6 +144,12 @@ class GetTablePlayerInfo(object):
         assert player_dc.get('player', Player)
         return player_dc
 
+    @staticmethod
+    def get_table_player_stack(player_id):
+        player = manager.gg.player_info.get(player_id)
+        ls = [i.point for i in player.stack]
+        return ls
+
     def get_table_player_bet(self, table_id, player_id):
         player_dc = self.get_table_player_info(table_id, player_id)
         bet = player_dc.get('bet')
@@ -184,6 +191,20 @@ def get_table_player_ready():
     assert isinstance(ready, bool)
     return ready
 
+
+@app.route('/api/table_player_stack')
+def get_table_player_stack():
+    """
+    获取牌桌上 玩家的手牌
+    :return:
+    """
+    info = request.data
+    dc = json.loads(info)
+    player_id = dc.get('player_id')
+    data = {'data': get_tp_info.get_table_player_stack(player_id)}
+
+    logger.info("????????????????????? {}".format(data))
+    return run(data=data)
 
 # def get_game_info():
 #     info = gg.panel()
@@ -233,6 +254,16 @@ def init_game():
     table_id = dc.get('table_id')
     param = (table_id, )
     init_game_queue.put(param)
+    return run()
+
+
+@app.route('/api/bid/limit_guess', methods=['POST'])
+def limit_guess_bid():
+    info = request.data
+    dc = json.loads(info)
+    table_id = dc.get('table_id')
+    param = table_id,
+    limit_guess_bid_queue.put(param)
     return run()
 
 

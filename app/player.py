@@ -2,7 +2,7 @@ from datetime import datetime
 from threading import Thread
 import time
 
-from app.bid import Card, FingerGuessCard
+from app.bid import Card, FingerGuessCard, bid_limited_guessing
 from app.log import logger
 from app.utils import get_game_id
 
@@ -22,13 +22,19 @@ class LimitedGuessing(object):
         # winner 三个值 None 未开始 True 平局 player 某一位
         self.winner = None
         self.gamble_lock = False
+        self.bid_state = False
 
     def bid(self):
         """
-        发牌
+        发牌 每个人九张牌
         :return: None
         """
-        pass
+        if self.bid_state:
+            pass
+        else:
+            for player in self.players:
+                bid_limited_guessing(player)
+            self.bid_state = True
 
     def bet(self, player, coin_num):
         # 下注
