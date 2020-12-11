@@ -8,9 +8,6 @@ from app.player import Player, GameInit, manager
 from app.utils import get_player_id
 
 
-gg = manager.gg
-
-
 class Handler(Thread):
     """
     采用队列方式来 进行通信，handler应该才是真正进行处理信息的角色
@@ -47,7 +44,7 @@ class InitGlobalGameHandler(Handler):
         param = self.queue.get()
         host, password = param
 
-        if isinstance(gg, GameInit):
+        if isinstance(manager.gg, GameInit):
             return True
         else:
             if (host, password) in Config.users:
@@ -72,11 +69,14 @@ class SetPlayerHandler(Handler):
         nickname, = param
 
         new_player_id = get_player_id()
-        new_player = Player()
-        new_player.set_name(nickname)
-        new_player.set_id(new_player_id)
+        if nickname in [i.name for i in manager.gg.player_info.values()]:
+            pass
+        else:
+            new_player = Player()
+            new_player.set_name(nickname)
+            new_player.set_id(new_player_id)
 
-        manager.gg.add_player(new_player)
+            manager.gg.add_player(new_player)
 
 
 class AddPlayerHandler(Handler):
@@ -100,8 +100,8 @@ class AddPlayerHandler(Handler):
             assert player_id in manager.gg.player_info.keys()
             table = manager.gg.table_dc[table_id]
             player = manager.gg.player_info[player_id]
-            assert player not in table.players
-            table.add_player(player)
+            if player not in table.players:
+                table.add_player(player)
             return True
         except AssertionError as e:
             logger.error('AddPlayerHandler fail: {}'.format(e))

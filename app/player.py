@@ -144,8 +144,9 @@ class PlayTable(object):
         return True
 
     def init_gambling(self):
-        game = LimitedGuessing(self.table_id, self.players)
-        self.game = game
+        if not self.game:
+            game = LimitedGuessing(self.table_id, self.players)
+            self.game = game
 
     def close(self):
         self.game = None
