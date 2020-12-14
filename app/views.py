@@ -5,10 +5,10 @@ import sys
 from flask import request, jsonify
 
 from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue, \
-    limit_guess_bid_queue
+    limit_guess_bid_queue, limit_guess_put_queue
 from app.handler import HandlersInit
 from app.log import logger
-from app.player import GameInit, FingerGuessPlayTable, Player, manager
+from app.player import GameInit, FingerGuessPlayTable, manager
 from app.config import app
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -139,9 +139,7 @@ class GetTablePlayerInfo(object):
     @staticmethod
     def get_table_player_info(table_id, player_id):
         table = manager.gg.table_dc.get(table_id)
-        assert isinstance(table.game, GameInit)
         player_dc = table.players_cards_on_table.get(player_id)
-        assert player_dc.get('player', Player)
         return player_dc
 
     @staticmethod
@@ -201,10 +199,53 @@ def get_table_player_stack():
     info = request.data
     dc = json.loads(info)
     player_id = dc.get('player_id')
-    data = {'data': get_tp_info.get_table_player_stack(player_id)}
+    data = get_tp_info.get_table_player_stack(player_id)
 
-    logger.info("????????????????????? {}".format(data))
     return run(data=data)
+
+
+@app.route('/api/table_player')
+def get_table_player():
+    """
+    获取牌桌上， 玩家们出牌情况
+    :return:
+    """
+    info = request.data
+    dc = json.loads(info)
+    table_id, player_id = dc.get('table_id'), dc.get('player_id')
+    logger.info('<<< dc {}'.format(dc))
+    assert table_id in manager.gg.table_dc.keys()
+    assert player_id in manager.gg.player_info.keys()
+
+    table = manager.gg.table_dc.get(table_id)
+    player = manager.gg.player_info.get(player_id)
+    assert player in table.players
+    put_dc = table.game.players_cards_on_table.get(player_id)
+    ret = {
+        'player_id': player.id,
+        'card_point': put_dc.get('card').point if put_dc.get('card') else None,
+        'ready': put_dc.get('ready')
+    }
+    logger.info('{}'.format(table.game.players_cards_on_table))
+    logger.info("<<<<<<<<< put_dc {}".format(ret))
+    return run(data=ret)
+
+
+# @app.route('/api/table_players/list')
+# def get_table_players_info_dc():
+#     """
+#     获取牌桌上， 玩家们出牌情况
+#     :return:
+#     """
+#     info = request.data
+#     dc = json.loads(info)
+#     table_id = dc.get('table_id')
+#     assert table_id in manager.gg.table_dc.keys()
+#
+#     table = manager.gg.table_dc.get(table_id)
+#     game = table.game
+#     pass
+
 
 # def get_game_info():
 #     info = gg.panel()
@@ -264,6 +305,16 @@ def limit_guess_bid():
     table_id = dc.get('table_id')
     param = table_id,
     limit_guess_bid_queue.put(param)
+    return run()
+
+
+@app.route('/api/put/limit_guess', methods=['POST'])
+def limit_guess_put():
+    info = request.data
+    dc = json.loads(info)
+    p_id, cards_point = dc.get('player_id'), dc.get('cards_point')   # 为了向后兼容，cp传列表
+    param = p_id, cards_point
+    limit_guess_put_queue.put(param)
     return run()
 
 

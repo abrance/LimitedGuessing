@@ -164,3 +164,25 @@ def test_limit_guess_bid():
     res = test_get_table_player_stack(True)
     data = res.get('data')
     assert data
+
+
+def test_limit_guess_put():
+    # lay
+    test_limit_guess_bid()
+
+    url = get_url('/api/put/limit_guess')
+    data = {
+        'player_id': 0,
+        'cards_point': ['R']
+    }
+    ret = requests.post(url, data=json.dumps(data))
+    check_ret(ret)
+    time.sleep(1)
+
+    url = get_url('/api/table_player')
+    data = {
+        'player_id': 0,
+        'table_id': 0
+    }
+    ret = requests.get(url, data=json.dumps(data))
+    check_ret(ret)

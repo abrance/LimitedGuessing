@@ -3,7 +3,7 @@ from queue import Queue
 from threading import Thread
 
 from app.config import add_player_queue, set_player_queue, init_global_game_queue, Config, init_game_queue, \
-    limit_guess_bid_queue
+    limit_guess_bid_queue, limit_guess_put_queue
 from app.log import logger
 from app.player import Player, GameInit, manager
 from app.utils import get_player_id
@@ -41,7 +41,6 @@ class InitGlobalGameHandler(Handler):
         super(InitGlobalGameHandler, self).__init__(init_global_game_queue)
 
     def handle(self):
-        logger.info('<<<')
         param = self.queue.get()
         host, password = param
 
@@ -50,7 +49,6 @@ class InitGlobalGameHandler(Handler):
         else:
             if (host, password) in Config.users:
                 manager.turn_on()
-                logger.info('<<<<<<')
                 return True
             else:
                 logger.error('not administrator')
@@ -151,6 +149,34 @@ class LimitGuessBidHandler(Handler):
             return False
 
 
+class LimitedGuessPutHandler(Handler):
+    """
+    出牌队列
+    """
+    def __init__(self):
+        super(LimitedGuessPutHandler, self).__init__(limit_guess_put_queue)
+
+    def handle(self):
+        param = self.queue.get()
+        p_id, card_points = param
+        logger.info('<<<<< p_id: {} card_points: {}'.format(p_id, card_points))
+        try:
+            assert isinstance(manager.gg, GameInit)
+            assert p_id in manager.gg.player_info.keys()
+            assert type(card_points) is list and len(card_points) == 1
+
+            player = manager.gg.player_info[p_id]
+
+            table = player.area
+            ret = table.game.put(player, card_points[0])
+
+            logger.info('<<<<<<<<<< succeed {}'.format(ret))
+            return True
+        except AssertionError as e:
+            logger.error('LimitGuessBidHandler fail: {}'.format(e))
+            return False
+
+
 class HandlersInit(object):
     """
     init all handlers
@@ -160,8 +186,10 @@ class HandlersInit(object):
     aph = AddPlayerHandler()
     igh = InitGameHandler()
     bh = LimitGuessBidHandler()
+    ph = LimitedGuessPutHandler()
     init_ggh.start()
     sph.start()
     aph.start()
     igh.start()
     bh.start()
+    ph.start()

@@ -49,10 +49,13 @@ class LimitedGuessing(object):
 
         return True
 
-    def put(self, player, card):
+    def put(self, player, card_point):
         # 放牌
-        assert isinstance(player, Player) and isinstance(card, Card)
         assert player in self.players
+        logger.info('<<<<<<1 put succeed')
+
+        # 这应该为原子操作，玩家手牌-1，桌上牌+1
+        card = player.play(card_point)
         put_dc = {
             player.id: {
                 'player': player,
@@ -63,7 +66,6 @@ class LimitedGuessing(object):
         }
 
         # 每一张牌都应该是由一个位置转到另一个位置的，这里是玩家手中出到牌桌
-        player.play(card)
         self.players_cards_on_table.update(put_dc)
         return True
 
@@ -147,6 +149,7 @@ class PlayTable(object):
     def add_player(self, player):
         assert len(self.players) < self.capacity
         self.players.append(player)
+        player.sit(self)
         return True
 
     def init_gambling(self):
@@ -172,6 +175,7 @@ class Player(object):
         self.stack = []
         self.coins = 0
         self.create_time = datetime.now()
+        self.area = None
 
     def set_name(self, name: str):
         self.name = name
@@ -179,15 +183,29 @@ class Player(object):
     def set_id(self, pid: int):
         self.id = pid
 
+    def sit(self, table):
+        self.area = table
+
     def hand_card(self, card):
         self.stack.append(card)
 
-    def play(self, card):
-        assert card in self.stack
+    def play(self, card_point):
+        # assert card_point in [c.point for c in self.stack]
+        def get_card(stack, _point):
+            for _card in stack:
+                if _card.point == _point:
+                    return _card
+
+            else:
+                return None
+
+        card = get_card(self.stack, card_point)
+        assert card
+
         self.stack.remove(card)
+        return card
 
     def get_reward(self, coin_num):
-        logger.info('<<<< get_reward coin_num')
         assert isinstance(self.coins, int) and isinstance(coin_num, int) and coin_num > 0
         self.coins += coin_num
         return True
