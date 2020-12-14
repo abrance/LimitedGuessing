@@ -3,7 +3,7 @@ from queue import Queue
 from threading import Thread
 
 from app.config import add_player_queue, set_player_queue, init_global_game_queue, Config, init_game_queue, \
-    limit_guess_bid_queue, limit_guess_put_queue
+    limit_guess_put_queue
 from app.log import logger
 from app.player import Player, GameInit, manager
 from app.utils import get_player_id
@@ -128,27 +128,6 @@ class InitGameHandler(Handler):
             return False
 
 
-class LimitGuessBidHandler(Handler):
-    """
-    对于一个table的玩家发牌开局
-    """
-    def __init__(self):
-        super(LimitGuessBidHandler, self).__init__(limit_guess_bid_queue)
-
-    def handle(self):
-        param = self.queue.get()
-        table_id, = param
-        try:
-            assert isinstance(manager.gg, GameInit)
-            assert table_id in manager.gg.table_dc.keys()
-            table = manager.gg.table_dc[table_id]
-            table.game.bid()
-            return True
-        except AssertionError as e:
-            logger.error('LimitGuessBidHandler fail: {}'.format(e))
-            return False
-
-
 class LimitedGuessPutHandler(Handler):
     """
     出牌队列
@@ -185,11 +164,9 @@ class HandlersInit(object):
     sph = SetPlayerHandler()
     aph = AddPlayerHandler()
     igh = InitGameHandler()
-    bh = LimitGuessBidHandler()
     ph = LimitedGuessPutHandler()
     init_ggh.start()
     sph.start()
     aph.start()
     igh.start()
-    bh.start()
     ph.start()

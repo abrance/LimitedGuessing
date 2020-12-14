@@ -4,8 +4,9 @@ import sys
 
 from flask import request, jsonify
 
+from app.bid import bid_limited_guessing
 from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue, \
-    limit_guess_bid_queue, limit_guess_put_queue
+    limit_guess_put_queue
 from app.handler import HandlersInit
 from app.log import logger
 from app.player import GameInit, FingerGuessPlayTable, manager
@@ -300,11 +301,24 @@ def init_game():
 
 @app.route('/api/bid/limit_guess', methods=['POST'])
 def limit_guess_bid():
-    info = request.data
-    dc = json.loads(info)
-    table_id = dc.get('table_id')
-    param = table_id,
-    limit_guess_bid_queue.put(param)
+    """
+    发牌应该是 给游戏里的所有人发牌，那么导致一个结果，发牌后，不能再进人了
+    :return:
+    """
+    # info = request.data
+    # dc = json.loads(info)
+    # table_id = dc.get('table_id')
+    # param = table_id,
+    # limit_guess_bid_queue.put(param)
+
+    # TODO 待确认的逻辑
+
+    players = manager.gg.player_info.values()
+    for player in players:
+        if player.stack:
+            continue
+        else:
+            bid_limited_guessing(player)
     return run()
 
 
