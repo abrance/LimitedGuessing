@@ -3,7 +3,7 @@ from queue import Queue
 from threading import Thread
 
 from app.config import add_player_queue, set_player_queue, init_global_game_queue, Config, init_game_queue, \
-    limit_guess_put_queue
+    limit_guess_put_queue, limit_guess_bet_queue
 from app.log import logger
 from app.player import Player, GameInit, manager
 from app.utils import get_player_id
@@ -147,12 +147,39 @@ class LimitedGuessPutHandler(Handler):
             player = manager.gg.player_info[p_id]
 
             table = player.area
-            ret = table.game.put(player, card_points[0])
+            table.game.put(player, card_points[0])
 
-            logger.info('<<<<<<<<<< succeed {}'.format(ret))
             return True
         except AssertionError as e:
-            logger.error('LimitGuessBidHandler fail: {}'.format(e))
+            logger.error('LimitedGuessPutHandler fail: {}'.format(e))
+            return False
+
+
+class LimitedGuessBetHandler(Handler):
+    """
+    下注 处理
+    """
+    def __init__(self):
+        super(LimitedGuessBetHandler, self).__init__(limit_guess_bet_queue)
+
+    def handle(self):
+        param = self.queue.get()
+        p_id, coin_num = param
+        logger.info('<<<<< p_id: {} coin_num: {}'.format(p_id, coin_num))
+        try:
+            assert isinstance(manager.gg, GameInit)
+            assert p_id in manager.gg.player_info.keys()
+            assert type(coin_num) is int and coin_num >= 1
+            logger.info("???")
+            player = manager.gg.player_info[p_id]
+
+            table = player.area
+            ret = table.game.bet(player, coin_num)
+
+            logger.info('succeed {}'.format(ret))
+            return True
+        except AssertionError as e:
+            logger.error('LimitedGuessBetHandler fail: {}'.format(e))
             return False
 
 
@@ -165,8 +192,10 @@ class HandlersInit(object):
     aph = AddPlayerHandler()
     igh = InitGameHandler()
     ph = LimitedGuessPutHandler()
+    bh = LimitedGuessBetHandler()
     init_ggh.start()
     sph.start()
     aph.start()
     igh.start()
     ph.start()
+    bh.start()

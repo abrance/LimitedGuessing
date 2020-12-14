@@ -2,7 +2,7 @@ from datetime import datetime
 from threading import Thread
 import time
 
-from app.bid import Card, FingerGuessCard, bid_limited_guessing
+from app.bid import FingerGuessCard, bid_limited_guessing
 from app.log import logger
 from app.utils import get_game_id
 
@@ -26,7 +26,7 @@ class LimitedGuessing(object):
 
     def bid(self):
         """
-        发牌 每个人九张牌
+        发牌 每个人九张牌 现在没用这个了
         :return: None
         """
         if self.bid_state:
@@ -61,7 +61,8 @@ class LimitedGuessing(object):
                 'player': player,
                 'card': card,
                 'time': datetime.now(),
-                'ready': False
+                'ready': False,
+                'bet': 0
             }
         }
 
@@ -204,6 +205,10 @@ class Player(object):
 
         self.stack.remove(card)
         return card
+
+    def deliver_coins(self, coin_num: int):
+        self.coins = coin_num
+        return True
 
     def get_reward(self, coin_num):
         assert isinstance(self.coins, int) and isinstance(coin_num, int) and coin_num > 0

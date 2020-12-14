@@ -181,8 +181,32 @@ def test_limit_guess_put():
 
     url = get_url('/api/table_player')
     data = {
-        'player_id': 0,
-        'table_id': 0
+        'player_id': 0
     }
     ret = requests.get(url, data=json.dumps(data))
     check_ret(ret)
+
+
+def test_limit_guess_bet():
+    # lay
+    test_limit_guess_put()
+
+    url = get_url('/api/bet/limit_guess')
+    data = {
+        'player_id': 0,
+        'coin_num': 1
+    }
+    ret = requests.post(url, data=json.dumps(data))
+    check_ret(ret)
+
+    time.sleep(1)
+    url = get_url('/api/table_player')
+    data = {
+        'player_id': 0
+    }
+    ret = requests.get(url, data=json.dumps(data))
+    check_ret(ret)
+    res = ret.json()
+    data = res.get('data')
+    bet = data.get('bet')
+    assert bet == 1

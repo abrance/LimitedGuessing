@@ -6,7 +6,7 @@ from flask import request, jsonify
 
 from app.bid import bid_limited_guessing
 from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue, \
-    limit_guess_put_queue
+    limit_guess_put_queue, limit_guess_bet_queue
 from app.handler import HandlersInit
 from app.log import logger
 from app.player import GameInit, FingerGuessPlayTable, manager
@@ -213,19 +213,20 @@ def get_table_player():
     """
     info = request.data
     dc = json.loads(info)
-    table_id, player_id = dc.get('table_id'), dc.get('player_id')
+    player_id = dc.get('player_id')
     logger.info('<<< dc {}'.format(dc))
-    assert table_id in manager.gg.table_dc.keys()
     assert player_id in manager.gg.player_info.keys()
 
-    table = manager.gg.table_dc.get(table_id)
     player = manager.gg.player_info.get(player_id)
+    assert player.area
+    table = player.area
     assert player in table.players
     put_dc = table.game.players_cards_on_table.get(player_id)
     ret = {
         'player_id': player.id,
         'card_point': put_dc.get('card').point if put_dc.get('card') else None,
-        'ready': put_dc.get('ready')
+        'ready': put_dc.get('ready'),
+        'bet': put_dc.get('bet')
     }
     logger.info('{}'.format(table.game.players_cards_on_table))
     logger.info("<<<<<<<<< put_dc {}".format(ret))
@@ -302,7 +303,7 @@ def init_game():
 @app.route('/api/bid/limit_guess', methods=['POST'])
 def limit_guess_bid():
     """
-    发牌应该是 给游戏里的所有人发牌，那么导致一个结果，发牌后，不能再进人了
+    发牌应该是 给游戏里的所有人发牌+发钱，那么导致一个结果，发牌后，不能再进人了
     :return:
     """
     # info = request.data
@@ -315,10 +316,11 @@ def limit_guess_bid():
 
     players = manager.gg.player_info.values()
     for player in players:
-        if player.stack:
+        if player.stack or player.coins:
             continue
         else:
             bid_limited_guessing(player)
+            player.deliver_coins(coin_num=3)
     return run()
 
 
@@ -329,6 +331,16 @@ def limit_guess_put():
     p_id, cards_point = dc.get('player_id'), dc.get('cards_point')   # 为了向后兼容，cp传列表
     param = p_id, cards_point
     limit_guess_put_queue.put(param)
+    return run()
+
+
+@app.route('/api/bet/limit_guess', methods=['POST'])
+def limit_guess_bet():
+    info = request.data
+    dc = json.loads(info)
+    p_id, coin_num = dc.get('player_id'), dc.get('coin_num')
+    param = p_id, coin_num
+    limit_guess_bet_queue.put(param)
     return run()
 
 
