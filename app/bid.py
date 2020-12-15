@@ -1,5 +1,6 @@
 import queue
 
+from app.log import logger
 
 card_pool = queue.Queue(3*6)
 
@@ -83,6 +84,7 @@ class FingerGuessCard(Card):
         if point1 in cls.points and point2 in cls.points:
             pass
         else:
+            logger.error('p1: {} p2: {}'.format(point1, point2))
             raise Exception
 
         if point1 == point2:

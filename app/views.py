@@ -6,7 +6,7 @@ from flask import request, jsonify
 
 from app.bid import bid_limited_guessing
 from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue, \
-    limit_guess_put_queue, limit_guess_bet_queue
+    limit_guess_put_queue, limit_guess_bet_queue, limit_guess_ready_queue, limit_guess_settle_queue
 from app.handler import HandlersInit
 from app.log import logger
 from app.player import GameInit, FingerGuessPlayTable, manager
@@ -222,11 +222,18 @@ def get_table_player():
     table = player.area
     assert player in table.players
     put_dc = table.game.players_cards_on_table.get(player_id)
+    assert put_dc is not None
+    if table.game.winner is True:
+        winner = True
+    else:
+        winner = table.game.winner.id if table.game.winner else None
+
     ret = {
         'player_id': player.id,
         'card_point': put_dc.get('card').point if put_dc.get('card') else None,
         'ready': put_dc.get('ready'),
-        'bet': put_dc.get('bet')
+        'bet': put_dc.get('bet'),
+        'winner': winner
     }
     logger.info('{}'.format(table.game.players_cards_on_table))
     logger.info("<<<<<<<<< put_dc {}".format(ret))
@@ -341,6 +348,26 @@ def limit_guess_bet():
     p_id, coin_num = dc.get('player_id'), dc.get('coin_num')
     param = p_id, coin_num
     limit_guess_bet_queue.put(param)
+    return run()
+
+
+@app.route('/api/ready/limit_guess', methods=['POST'])
+def limit_guess_ready():
+    info = request.data
+    dc = json.loads(info)
+    p_id = dc.get('player_id')
+    param = p_id,
+    limit_guess_ready_queue.put(param)
+    return run()
+
+
+@app.route('/api/settle/limit_guess', methods=['POST'])
+def limit_guess_settle():
+    info = request.data
+    dc = json.loads(info)
+    p_id = dc.get('player_id')
+    param = p_id,
+    limit_guess_settle_queue.put(param)
     return run()
 
 

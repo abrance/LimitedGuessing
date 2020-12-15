@@ -154,10 +154,7 @@ def test_limit_guess_bid():
 
     test_init_game()
     url = get_url('/api/bid/limit_guess')
-    data = {
-        'table_id': 0
-    }
-    ret = requests.post(url, data=json.dumps(data))
+    ret = requests.post(url)
     check_ret(ret)
     time.sleep(1)
 
@@ -170,13 +167,14 @@ def test_limit_guess_put():
     # lay
     test_limit_guess_bid()
 
-    url = get_url('/api/put/limit_guess')
-    data = {
-        'player_id': 0,
-        'cards_point': ['R']
-    }
-    ret = requests.post(url, data=json.dumps(data))
-    check_ret(ret)
+    for i in range(2):
+        url = get_url('/api/put/limit_guess')
+        data = {
+            'player_id': i,
+            'cards_point': ['R']
+        }
+        ret = requests.post(url, data=json.dumps(data))
+        check_ret(ret)
     time.sleep(1)
 
     url = get_url('/api/table_player')
@@ -191,13 +189,14 @@ def test_limit_guess_bet():
     # lay
     test_limit_guess_put()
 
-    url = get_url('/api/bet/limit_guess')
-    data = {
-        'player_id': 0,
-        'coin_num': 1
-    }
-    ret = requests.post(url, data=json.dumps(data))
-    check_ret(ret)
+    for i in [(0, 1), (1, 2)]:
+        url = get_url('/api/bet/limit_guess')
+        data = {
+            'player_id': i[0],
+            'coin_num': i[1]
+        }
+        ret = requests.post(url, data=json.dumps(data))
+        check_ret(ret)
 
     time.sleep(1)
     url = get_url('/api/table_player')
@@ -210,3 +209,56 @@ def test_limit_guess_bet():
     data = res.get('data')
     bet = data.get('bet')
     assert bet == 1
+
+
+def test_limit_guess_ready():
+    # 不设置 依赖了，前面执行完的并没有清理也很难清理，然后执行两遍也浪费时间
+
+    url = get_url('/api/ready/limit_guess')
+
+    for i in range(2):
+        data = {
+            'player_id': i
+        }
+        ret = requests.post(url, data=json.dumps(data))
+        check_ret(ret)
+
+    time.sleep(1)
+
+    # 验证
+    url = get_url('/api/table_player')
+
+    for i in range(2):
+        data = {
+            'player_id': i
+        }
+        ret = requests.get(url, data=json.dumps(data))
+        check_ret(ret)
+        res = ret.json()
+        data = res.get('data')
+        winner = data.get('winner')
+        assert winner is not None
+
+
+def test_limit_guess_settle():
+
+    url = get_url('/api/settle/limit_guess')
+    for i in range(2):
+        data = {
+            'player_id': i
+        }
+        ret = requests.post(url, data=json.dumps(data))
+        check_ret(ret)
+
+    # 验证
+    url = get_url('/api/table_player')
+    for i in range(2):
+        data = {
+            'player_id': i
+        }
+        ret = requests.get(url, data=json.dumps(data))
+        check_ret(ret)
+        res = ret.json()
+        data = res.get('data')
+        card_point = data.get('card_point')
+        assert card_point is not None

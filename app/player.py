@@ -52,8 +52,16 @@ class LimitedGuessing(object):
     def put(self, player, card_point):
         # 放牌
         assert player in self.players
-        logger.info('<<<<<<1 put succeed')
 
+        if self.players_cards_on_table.get(player.id):
+            last_card = self.players_cards_on_table.get(player.id).get('card')
+            if last_card and last_card.point != card_point:
+                player.hand_card(last_card)
+                pass
+            elif last_card.point == card_point:
+                return True
+        else:
+            pass
         # 这应该为原子操作，玩家手牌-1，桌上牌+1
         card = player.play(card_point)
         put_dc = {
@@ -70,6 +78,17 @@ class LimitedGuessing(object):
         self.players_cards_on_table.update(put_dc)
         return True
 
+    def ready(self, player):
+        # 玩家准备好了，确认赌局成立
+        assert player in self.players
+        dc = self.players_cards_on_table.get(player.id)
+        assert dc
+        assert dc.get('card') and dc.get('bet')
+        self.players_cards_on_table.get(player.id).__setitem__('ready', True)
+
+        self.lock_gamble()
+        return True
+
     def check(self):
         # 决出 winner
         assert self.gamble_lock is True
@@ -78,7 +97,7 @@ class LimitedGuessing(object):
         s = list(self.players_cards_on_table.values())[1]
         f_card = f.get('card')
         s_card = s.get('card')
-        ret = FingerGuessCard.compare(f_card, s_card)
+        ret = FingerGuessCard.compare(f_card.point, s_card.point)
         if isinstance(ret, int):
             # 平局
             self.winner = True
@@ -92,35 +111,100 @@ class LimitedGuessing(object):
                 return s.get('player')
 
     def lock_gamble(self):
-        for i in self.players_cards_on_table.values():
-            assert i.get('ready') is True
-        self.gamble_lock = True
-        return True
+        # 初步设定，每次 准备，就 执行一次这个函数
+        try:
+            assert len(self.players_cards_on_table) > 1
+            for i in self.players_cards_on_table.values():
+                assert i.get('ready') is True
+            self.gamble_lock = True
 
-    def settle(self):
-        # 结算
+            self.check()
+            return True
+        except AssertionError:
+            return False
+
+    def settle(self, player=None, table=True):
+        # 结算   player 可以单独结算，也可整个游戏的人一起结算
         assert self.gamble_lock is True
 
+        logger.info("<<<<<<<<<<<<<<<<<<<<<<<< settle: {}".format(self.players_cards_on_table))
+
         if self.winner is True:
-            # 平局
-            pass
+            # 平局， 清理桌面，解开锁，双方牌丢弃，coin 回到钱包
+            if player:
+                # 单个player 清理
+                tb = self.players_cards_on_table.get(player.id)
+                card, bet = tb.get('card'), tb.get('bet')
+                # assert isinstance(tb, dict)
+                # tb.update({'card': None, 'bet': 0})
+                if card and bet:
+                    tb['card'] = None
+                    tb['bet'] = None
+                    tb['time'] = None
+                    player.get_reward(bet)
+                else:
+                    pass
+
+            elif table:
+                for p_id, tb in self.players_cards_on_table.items():
+                    card, bet = tb.get('card'), tb.get('bet')
+                    # assert isinstance(tb, dict)
+                    # tb.update({'card': None, 'bet': 0})
+                    if card and bet:
+                        tb['card'] = None
+                        tb['bet'] = None
+                        tb['time'] = None
+                        tb['ready'] = None
+                        player = tb.get('player')
+                        player.get_reward(bet)
+                    else:
+                        pass
+
+            return True
         else:
-            assert isinstance(self.winner, Player)
-            assert self.winner.id in self.players_cards_on_table.keys()
-            bet = self.players_cards_on_table.get(self.winner.id).get('bet')
-            assert isinstance(bet, int) and bet > 0
-            ls = list(self.players_cards_on_table.keys())
-            ls.pop(self.winner.id)
-            assert len(ls) is 1
-            another = ls[0]
-            another_dc = self.players_cards_on_table[another]
-            another_bet = another_dc.get('bet')
-            assert isinstance(another_bet, int) and another_bet > 0
+            def winner_settle(self):
+                # 如果是胜者要求结算，则 发放奖励
+                assert isinstance(self.winner, Player)
+                assert self.winner.id in self.players_cards_on_table.keys()
+                _bet = self.players_cards_on_table.get(self.winner.id).get('bet')
+                assert isinstance(_bet, int) and _bet > 0
+                ls = list(self.players_cards_on_table.keys())
+                ls.pop(self.winner.id)
+                assert len(ls) is 1
+                another = ls[0]
+                another_dc = self.players_cards_on_table[another]
+                another_bet = another_dc.get('bet')
+                assert isinstance(another_bet, int) and another_bet > 0
 
-            # 奖金 发给 winner
-            reward = bet + another_bet
-            self.winner.get_reward(reward)
+                # 奖金 发给 winner
+                reward = _bet + another_bet
+                self.winner.get_reward(reward)
 
+                _tb = self.players_cards_on_table[player.id]
+                _tb['card'] = None
+                _tb['time'] = None
+                _tb['ready'] = None
+                _tb['bet'] = None
+
+            if player:
+                if player is self.winner:
+                    winner_settle(self)
+                else:
+                    # 如果是败者，则不能将自己的bet 清空，因为需要拿这个数据
+                    tb = self.players_cards_on_table.get(player.id)
+                    tb['card'] = None
+                    tb['time'] = None
+                    tb['ready'] = None
+            elif table:
+                for p_id, tb in self.players_cards_on_table.items():
+                    player = tb.get(player)
+                    if player is self.winner:
+                        winner_settle(self)
+                    else:
+                        tb = self.players_cards_on_table.get(p_id)
+                        tb['card'] = None
+                        tb['time'] = None
+                        tb['ready'] = None
             return True
 
 
@@ -207,6 +291,7 @@ class Player(object):
         return card
 
     def deliver_coins(self, coin_num: int):
+        # 发钱
         self.coins = coin_num
         return True
 
