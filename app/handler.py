@@ -3,7 +3,8 @@ from queue import Queue
 from threading import Thread
 
 from app.config import add_player_queue, set_player_queue, init_global_game_queue, Config, init_game_queue, \
-    limit_guess_put_queue, limit_guess_bet_queue, limit_guess_ready_queue, limit_guess_settle_queue
+    limit_guess_put_queue, limit_guess_bet_queue, limit_guess_ready_queue, limit_guess_settle_queue, \
+    limit_guess_player_queue
 from app.log import logger
 from app.player import Player, GameInit, manager
 from app.utils import get_player_id
@@ -197,7 +198,7 @@ class LimitedGuessReadyHandler(Handler):
             player = manager.gg.player_info[p_id]
 
             table = player.area
-            ret = table.game.ready(player)
+            table.game.ready(player)
 
             return True
         except AssertionError as e:
@@ -227,6 +228,44 @@ class LimitedGuessSettleHandler(Handler):
 
             logger.info('succeed {}'.format(ret))
             return True
+        except AssertionError as e:
+            logger.error('LimitedGuessSettleHandler fail: {}'.format(e))
+            return False
+
+
+class LimitedGuessAgent(Handler):
+    def __init__(self):
+        super(LimitedGuessAgent, self).__init__(limit_guess_player_queue)
+
+    def bring_to_black_room(self, player):
+        self.clean_player(player)
+        pass
+
+    def clean_player(self, player):
+        pass
+
+    def handle(self):
+        param = self.queue.get()
+        player = param
+        try:
+            assert isinstance(manager.gg, GameInit)
+            if player.coins > 0:
+                time.sleep(0.1)
+                self.queue.put(player)
+            else:
+                if player.area:
+                    table = player.area
+                    try:
+                        assert table.game.players_cards_on_table.get(player.id).get('bet') > 0
+                        time.sleep(0.1)
+                        self.queue.put(player)
+                    except AssertionError:
+                        self.bring_to_black_room(player)
+
+                else:
+                    # 既没有参加赌局也没有生命，视为被关进小黑屋
+                    self.bring_to_black_room(player)
+
         except AssertionError as e:
             logger.error('LimitedGuessSettleHandler fail: {}'.format(e))
             return False

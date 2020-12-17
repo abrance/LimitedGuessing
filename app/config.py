@@ -54,5 +54,6 @@ limit_guess_put_queue = Queue(maxsize=-1)
 limit_guess_bet_queue = Queue(maxsize=-1)
 limit_guess_ready_queue = Queue(maxsize=-1)
 limit_guess_settle_queue = Queue(maxsize=-1)
+limit_guess_player_queue = Queue(maxsize=-1)
 
 card_queue = Queue(maxsize=-1)

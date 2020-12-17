@@ -7,7 +7,7 @@ from flask import request, jsonify
 from app.bid import bid_limited_guessing
 from app.config import set_player_queue, add_player_queue, init_global_game_queue, init_game_queue, \
     limit_guess_put_queue, limit_guess_bet_queue, limit_guess_ready_queue, limit_guess_settle_queue
-from app.handler import HandlersInit
+from app.handler import HandlersInit, LimitedGuessAgent
 from app.log import logger
 from app.player import GameInit, FingerGuessPlayTable, manager
 from app.config import app
@@ -328,6 +328,9 @@ def limit_guess_bid():
         else:
             bid_limited_guessing(player)
             player.deliver_coins(coin_num=3)
+
+    lga = LimitedGuessAgent()
+    lga.start()
     return run()
 
 
